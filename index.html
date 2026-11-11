@@ -146,6 +146,12 @@ body.embed .wrap{padding-top:0}
 .setup-ph p{margin:0;max-width:34ch;font-size:.95rem}
 .setup-ph .chosen{font-weight:700;color:#0f172a}
 .setup-ph .btn{margin-top:6px;min-width:220px}
+
+body.setup-mode .left,body.setup-mode .right>.card:nth-child(n+2){display:none}
+body.setup-mode .right{flex:1 1 100%;max-width:520px;margin:18px auto 0}
+body.setup-mode .right>.card:first-child{padding:20px}
+body.setup-mode #btnNew{padding:14px;font-size:1.05rem}
+body:not(.setup-mode) .right>.card:first-child{display:none}
 </style>
 </head>
 <body>
@@ -186,6 +192,7 @@ body.embed .wrap{padding-top:0}
       </div>
 
       <div class="card">
+        <button class="btn" id="btnBack" style="width:100%;margin-bottom:10px">⚙ Neues Rätsel / Einstellungen ändern</button>
         <h2>Werkzeuge</h2>
         <div class="btns">
           <button class="btn primary full" id="btnCheck">✔ Überprüfen</button>
@@ -640,8 +647,7 @@ function toolsDisabled(on){for(const id of TOOL_IDS){const e=$(id);if(e)e.disabl
 function showSetup(){
   ++genToken;stopTimer();puz=null;tips=0;checks=0;solUsed=false;
   const stage=$('stage');stage.classList.remove('loading','sol');
-  stage.innerHTML=`<div class="setup-ph"><div class="big">${def.icon||'🧩'}</div><h3>Neues ${def.name} einrichten</h3><p>Wähle Grösse und Niveau und erstelle dann das Rätsel.</p><p class="chosen" id="setupSel"></p><button class="btn primary" id="btnSetupGo">Rätsel erstellen</button></div>`;
-  $('btnSetupGo').addEventListener('click',startGame);
+  stage.innerHTML='';document.body.classList.add('setup-mode');
   const pad=$('pad');pad.innerHTML='';pad.removeAttribute('style');
   toolsDisabled(true);hideMsg();
   $('stLevel').textContent='–';$('stTime').textContent='00:00';$('stStatus').textContent='noch kein Rätsel';$('stStatus').className='';
@@ -658,6 +664,7 @@ function startGame(){
 /* Neues Rätsel */
 function newGame(){
   const token=++genToken, stage=$('stage');
+  document.body.classList.remove('setup-mode');
   stopTimer();
   stage.classList.add('loading');
   showMsg(`${def.name} wird erstellt …`,'info');
@@ -666,7 +673,7 @@ function newGame(){
     let p=null;
     try{p=def.create(settings.size,settings.lvl);}catch(err){console.error(err);}
     stage.classList.remove('loading');
-    if(!p){showMsg('Das Rätsel konnte nicht erstellt werden. Bitte nochmals versuchen.','warn');if(!puz)showSetup();return;}
+    if(!p){showMsg('Das Rätsel konnte nicht erstellt werden. Bitte nochmals versuchen.','warn');return;}
     puz=p;tips=0;checks=0;solUsed=false;
     toolsDisabled(false);
     puz.mount(ctx,stage,$('pad'));
@@ -730,6 +737,7 @@ function toggleNotes(){
 
 /* Ereignisse */
 $('btnNew').addEventListener('click',startGame);
+$('btnBack').addEventListener('click',()=>{if(puz&&!puz.done&&!puz.locked&&!solUsed&&!confirm('Das laufende Rätsel wird verworfen. Zu den Einstellungen wechseln?'))return;showSetup();});
 $('btnCheck').addEventListener('click',check);
 $('btnHint').addEventListener('click',hint);
 $('btnReset').addEventListener('click',resetGame);
@@ -766,7 +774,7 @@ function setupEmbed(){
   $('gameTitle').textContent=def.title;
   $('sub').textContent=def.intro;
   $('newTitle').textContent=def.newLabel||'Neues '+def.name;
-  $('btnNew').textContent=def.newLabel?def.newLabel+' starten':'Neues '+def.name+' erstellen';
+  $('btnNew').textContent='Rätsel erstellen';
   $('sizeLbl').textContent=def.sizeTitle||'Grösse';
   if(def.tools.undo)$('btnNotes').textContent='↶ Zug zurück';
   else if(def.tools.notesLabel)$('btnNotes').textContent=def.tools.notesLabel+': aus';
