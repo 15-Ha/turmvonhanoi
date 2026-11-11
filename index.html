@@ -1,0 +1,786 @@
+<!doctype html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Turm von Hanoi – Rätsel-Trainer</title>
+<style>
+:root{
+  /* Farben nach flade.ch: Weiss als Grund, Anthrazit für Text, Limettengrün #aecb35 als Akzent */
+  --bg:#ffffff; --card:#f8faf0; --ink:#231f20; --muted:#5f6657;
+  --line:#d3dbbd; --thick:#231f20; --given:#231f20; --user:#46640f;
+  --sel:#dbe9a0; --peer:#f4f8e2; --same:#e7f0bd;
+  --ok:#15803d; --okbg:#dcfce7; --bad:#b91c1c; --badbg:#fee2e2;
+  --hint:#92400e; --hintbg:#fef3c7;
+  --accent:#aecb35; --accent-bg:#f1f7d9; --accent-dark:#5d7410; --lime:#aecb35;
+  --water:#e6f1f5;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Calibri,"Segoe UI",Arial,sans-serif;}
+.wrap{max-width:980px;margin:0 auto;padding:16px;}
+
+/* Kopf */
+.top{display:flex;align-items:center;gap:16px;margin:2px 0 14px;padding-bottom:12px;border-bottom:3px solid var(--lime)}
+.logo{height:58px;width:auto;display:block;flex:none}
+.titlebox h1{margin:0;font-size:1.7rem;line-height:1.15}
+.sub{color:var(--muted);margin:2px 0 0}
+/* Layout */
+.layout{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start}
+.left{flex:1 1 420px;min-width:280px}
+.right{flex:0 1 300px;min-width:260px;display:flex;flex-direction:column;gap:12px}
+.card{background:var(--card);border-radius:12px;padding:14px;border:1px solid var(--line);box-shadow:0 1px 3px rgba(35,31,32,.06)}
+.card h2{font-size:1.05rem;margin:0 0 8px}
+label.small{font-size:.9rem;color:var(--muted);display:block;margin-bottom:4px}
+.seg{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.seg button{flex:1 1 auto;border:2px solid var(--line);background:#fff;border-radius:8px;padding:7px 8px;font:inherit;cursor:pointer;color:var(--ink)}
+.seg button.on{border-color:var(--accent);background:var(--accent-bg);font-weight:bold}
+.lvldesc{font-size:.9rem;color:var(--muted);min-height:2.4em;margin:0 0 10px}
+.btn{border:none;border-radius:8px;padding:9px 12px;font:inherit;cursor:pointer;background:#e5e7eb;color:var(--ink)}
+.btn:hover{filter:brightness(.95)}
+.btn.primary{background:var(--accent);color:var(--ink);font-weight:bold}
+.btn.primary:hover{background:#9db92d}
+.btn.on{background:var(--accent-dark);color:#fff}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.btns .full{grid-column:1/-1}
+.stats{display:flex;justify-content:space-between;font-size:.95rem;margin-bottom:8px;gap:8px;flex-wrap:wrap}
+.stats b{font-variant-numeric:tabular-nums}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid #f59e0b;outline-offset:2px}
+
+/* Spielfeld (gemeinsam) */
+.board{
+  width:min(100%,520px); aspect-ratio:1/1; margin:0 auto;
+  display:grid; grid-template-columns:repeat(var(--cols,var(--n)),1fr); grid-template-rows:repeat(var(--cols,var(--n)),1fr);
+  border:3px solid var(--thick); background:#fff; user-select:none; touch-action:manipulation;
+}
+.cell{
+  display:flex;align-items:center;justify-content:center;position:relative;
+  border-right:1px solid var(--line);border-bottom:1px solid var(--line);
+  font-size:calc(min(100vw - 40px,520px) / var(--n) * .55);
+  cursor:pointer;color:var(--user);
+}
+.cell.tr{border-right:3px solid var(--thick)}
+.cell.tb{border-bottom:3px solid var(--thick)}
+.cell.lastc{border-right:none}
+.cell.lastr{border-bottom:none}
+.cell.water{background:var(--water)}
+.cell.peer{background:var(--peer)}
+.cell.same{background:var(--same)}
+.cell.sel{background:var(--sel)}
+.cell.given{color:var(--given);font-weight:bold}
+.cell.hint{color:var(--hint);background:var(--hintbg)}
+.cell.ok{color:var(--ok);background:var(--okbg)}
+.cell.bad{color:var(--bad);background:var(--badbg)}
+.cell.sel.ok,.cell.sel.bad,.cell.sel.hint{outline:3px solid var(--accent);outline-offset:-3px}
+.cell.water.ok,.cell.water.bad,.cell.water.hint{outline:0}
+.notes{position:absolute;inset:2px;display:grid;font-size:calc(min(100vw - 40px,520px) / var(--n) * .22);color:#64748b;line-height:1;font-weight:normal}
+.notes span{display:flex;align-items:center;justify-content:center}
+
+/* Eingabe */
+.pad{display:grid;gap:6px;margin:12px auto 0;width:min(100%,520px)}
+.pad button{font:inherit;font-size:1.4rem;padding:10px 0;border-radius:8px;border:2px solid var(--line);background:#fff;cursor:pointer;color:var(--ink)}
+.pad button.del{font-size:1rem}
+.pad button.done{opacity:.35}
+.padhelp{margin:12px auto 0;width:min(100%,520px);font-size:.95rem;color:var(--muted);text-align:center}
+.msg{margin:12px auto 0;width:min(100%,520px);padding:10px 12px;border-radius:8px;display:none;font-size:1rem}
+.msg.show{display:block}
+.msg.info{background:#e0f2fe;color:#075985}
+.msg.good{background:var(--okbg);color:#14532d}
+.msg.warn{background:var(--badbg);color:#7f1d1d}
+.toggle{display:flex;gap:8px;align-items:center;font-size:.95rem;margin-top:6px;cursor:pointer}
+details summary{cursor:pointer;font-weight:bold}
+details ul{padding-left:18px;margin:8px 0 0}
+details li{margin-bottom:4px}
+.legend{display:flex;flex-wrap:wrap;gap:6px;font-size:.85rem;margin-top:8px}
+.legend span{padding:2px 6px;border-radius:5px}
+.overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:center;justify-content:center;padding:16px;z-index:10}
+.overlay.show{display:flex}
+.dialog{background:#fff;border-radius:14px;padding:22px;max-width:380px;width:100%;text-align:center}
+.dialog h3{margin:0 0 8px;font-size:1.5rem}
+.dialog p{margin:6px 0}
+.loading{opacity:.4;pointer-events:none}
+.printhead{display:none}
+
+@media (max-width:520px){
+  .logo{height:46px}
+  .titlebox h1{font-size:1.4rem}
+}
+@media print{
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body{background:#fff}
+  .right,.pad,.padhelp,.msg,.sub,.titlebox,.stats,.overlay{display:none!important}
+  .top{margin:0 0 8px}
+  .logo{height:1.3cm}
+  .printhead{display:block;margin-bottom:12px;font-size:1.2rem}
+  .board{width:16cm}
+  .cell{font-size:calc(16cm / var(--n) * .55)}
+  .cell.peer,.cell.same,.cell.sel{background:#fff}
+}
+
+/* Eingebettet in die Plattform: Kopf wird von der Plattform gezeigt */
+body.embed .top{display:none}
+body.embed .wrap{padding-top:0}
+@media print{body.embed .top{display:flex}}
+
+/* Kennzeichnung «Lösung angezeigt» */
+#stStatus.bad{color:var(--bad)}
+#stStatus.good{color:var(--ok)}
+.solbanner{display:none;background:#b91c1c;color:#fff;font-weight:bold;text-align:center;padding:8px 10px;border-radius:8px;margin-bottom:8px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+#stage{position:relative}
+#stage.sol{outline:4px solid #b91c1c;outline-offset:2px}
+#stage.sol::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:5;background:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='170'><text x='130' y='90' text-anchor='middle' font-family='Arial' font-size='22' font-weight='bold' fill='%23b91c1c' fill-opacity='.38' transform='rotate(-25 130 85)'>LÖSUNG ANGEZEIGT</text></svg>") repeat;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+
+/* Turm von Hanoi (nutzt die .kn-*-Formate nicht mit – hier vollständig eigen) */
+.kn-wrap{width:min(100%,520px);margin:0 auto}
+.kn-info{font-size:.95rem;margin:0 0 6px;color:var(--muted)}
+.kn-info b{color:var(--ink);font-variant-numeric:tabular-nums}
+.kn-svg{display:block;width:100%;height:auto;background:#fff;border:3px solid var(--line);border-radius:8px;user-select:none;touch-action:manipulation}
+.kn-svg .peg{cursor:pointer}
+.kn-svg.small{border-width:1px;width:55%;pointer-events:none}
+.hn-goal{display:flex;align-items:center;gap:10px;margin-top:10px;color:var(--muted);font-size:.95rem}
+@media print{.kn-wrap{width:16cm}.kn-info{display:none}}
+
+
+.setup-ph{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-height:260px;padding:28px 18px;text-align:center;border:2px dashed var(--line,#cbd5e1);border-radius:16px;background:#f8fafc;color:#334155}
+.setup-ph .big{font-size:40px;line-height:1}
+.setup-ph h3{margin:0;font-size:1.15rem}
+.setup-ph p{margin:0;max-width:34ch;font-size:.95rem}
+.setup-ph .chosen{font-weight:700;color:#0f172a}
+.setup-ph .btn{margin-top:6px;min-width:220px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <img class="logo" src="data:image/png;base64,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" alt="Logo">
+    <div class="titlebox">
+      <h1 id="gameTitle">Rätsel-Trainer</h1>
+      <p class="sub" id="sub"></p>
+    </div>
+  </header>
+
+    <div class="layout">
+    <div class="left">
+      <div class="printhead"><span id="phTitle"></span> &nbsp;&nbsp; Name: ______________________</div>
+      <div class="stats">
+        <span>Niveau: <b id="stLevel">–</b></span>
+        <span>Zeit: <b id="stTime">00:00</b></span>
+        <span>Tipps: <b id="stTips">0</b></span>
+        <span>Prüfungen: <b id="stChecks">0</b></span>
+        <span>Status: <b id="stStatus">in Arbeit</b></span>
+      </div>
+      <div id="solBanner" class="solbanner" role="alert">⚠ LÖSUNG ANGEZEIGT – dieses Rätsel zählt nicht als selbst gelöst</div>
+      <div id="stage"></div>
+      <div id="pad"></div>
+      <div class="msg" id="msg" role="status" aria-live="polite"></div>
+    </div>
+
+    <div class="right">
+      <div class="card">
+        <h2 id="newTitle">Neues Rätsel</h2>
+        <label class="small" id="sizeLbl">Grösse</label>
+        <div class="seg" id="sizeSeg"></div>
+        <label class="small">Niveau</label>
+        <div class="seg" id="lvlSeg"></div>
+        <p class="lvldesc" id="lvlDesc"></p>
+        <button class="btn primary" style="width:100%" id="btnNew">Neues Rätsel erstellen</button>
+      </div>
+
+      <div class="card">
+        <h2>Werkzeuge</h2>
+        <div class="btns">
+          <button class="btn primary full" id="btnCheck">✔ Überprüfen</button>
+          <button class="btn" id="btnNotes">✎ Notizen: aus</button>
+          <button class="btn" id="btnHint">💡 Tipp</button>
+          <button class="btn" id="btnReset">↺ Neu beginnen</button>
+          <button class="btn" id="btnSolve">Lösung zeigen</button>
+          <button class="btn full" id="btnPrint">🖨 Drucken</button>
+        </div>
+        <label class="toggle"><input type="checkbox" id="autoCheck"> Fehler sofort rot anzeigen</label>
+        <div class="legend">
+          <span style="background:var(--okbg);color:var(--ok)">richtig</span>
+          <span style="background:var(--badbg);color:var(--bad)">falsch</span>
+          <span style="background:var(--hintbg);color:var(--hint)">Tipp</span>
+          <span style="font-weight:bold">vorgegeben</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <details>
+          <summary id="rulesTitle">So geht's</summary>
+          <ul id="rules"></ul>
+        </details>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="winTitle">
+    <h3 id="winTitle">🎉 Geschafft!</h3>
+    <p id="winText"></p>
+    <p style="font-size:.9rem;color:var(--muted)">Tipp: Mach einen Screenshot für dein Lernjournal.</p>
+    <button class="btn primary" id="btnWinNew" style="margin-top:10px">Nächstes Rätsel</button>
+    <button class="btn" id="btnWinClose" style="margin-top:10px">Schliessen</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+   KERN – gemeinsam für alle Rätsel (wird in jede Rätsel-Datei eingebaut)
+   Enthält: Hilfsfunktionen und die Basisklasse GridPuzzle.
+   Ein Rätsel erbt von GridPuzzle und meldet sich mit  const GAME = {...}  an.
+   ===================================================================== */
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function randOf(a){return a[Math.floor(Math.random()*a.length)];}
+const LEVEL_NAMES={sl:'Sehr leicht',l:'Leicht',m:'Mittel',s:'Schwer'};
+
+class GridPuzzle{
+  constructor(def,size,lvlKey,data){
+    this.def=def; this.n=size; this.lvlKey=lvlKey;
+    this.sol=data.sol; this.cur=data.puz.slice();
+    this.given=data.puz.map(v=>v>0);
+    this.hinted=new Array(size*size).fill(false);
+    this.mark=new Array(size*size).fill(0);          // 0 nichts, 1 richtig, 2 falsch
+    this.sel=-1; this.done=false; this.cells=[]; this.ctx=null;
+  }
+
+  /* --- Hooks, die Unterklassen überschreiben --- */
+  baseClass(i){return 'cell';}
+  extraClass(i){return i===this.sel?' sel':'';}
+  paint(i,d){}                                       // Zelleninhalt zeichnen
+  onCell(i){this.sel=i;this.refresh();}
+  handleKey(e){return false;}
+  buildPad(pad){pad.className='padhelp';pad.textContent=this.def.padHelp||'';}
+  afterSet(i,v){}
+  afterReset(){}
+  afterRefresh(){}
+  cellState(i){const v=this.cur[i];if(!v)return 'empty';return v===this.sol[i]?'right':'wrong';}
+  solved(){return this.cur.every((v,k)=>v===this.sol[k]);}
+  pickHint(){
+    const open=[];
+    for(let i=0;i<this.cur.length;i++)if(!this.given[i]&&this.cur[i]!==this.sol[i])open.push(i);
+    if(!open.length)return null;
+    const i=(this.sel>=0&&open.includes(this.sel))?this.sel:randOf(open);
+    return {i,text:'Ein Feld wurde mit einem Tipp ausgefüllt (gelb).'};
+  }
+  revealEmpty(i){this.hinted[i]=true;}
+
+  /* --- gemeinsame Abläufe --- */
+  buildBoard(){
+    const b=document.createElement('div');
+    b.className='board g-'+this.def.id;
+    b.style.setProperty('--n',this.n);
+    b.setAttribute('aria-label',this.def.name+'-Feld');
+    this.cells=[];
+    for(let i=0;i<this.n*this.n;i++){
+      const d=document.createElement('div');
+      d.addEventListener('click',()=>this.onCell(i));
+      b.appendChild(d);this.cells.push(d);
+    }
+    return b;
+  }
+  mount(ctx,stage,pad){
+    this.ctx=ctx;
+    stage.innerHTML='';
+    stage.appendChild(this.buildBoard());
+    pad.className='';pad.removeAttribute('style');pad.innerHTML='';
+    this.buildPad(pad);
+    this.refresh();
+  }
+  refresh(){
+    for(let i=0;i<this.cur.length;i++){
+      const d=this.cells[i];
+      let cls=this.baseClass(i);
+      if(this.given[i])cls+=' given';
+      if(this.hinted[i])cls+=' hint';
+      if(this.mark[i]===1)cls+=' ok';
+      if(this.mark[i]===2)cls+=' bad';
+      cls+=this.extraClass(i);
+      d.className=cls;
+      this.paint(i,d);
+    }
+    this.afterRefresh();
+  }
+  commit(){this.ctx.hideMsg();this.refresh();this.ctx.changed();}
+  setCell(i,v){
+    this.cur[i]=v;this.hinted[i]=false;this.mark[i]=0;
+    if(v&&this.ctx.autoCheck()&&v!==this.sol[i])this.mark[i]=2;
+    this.afterSet(i,v);
+  }
+  editable(){return !this.done&&this.sel>=0&&!this.given[this.sel];}
+  keydown(e){
+    if(this.handleKey(e))return true;
+    const k=e.key,N=this.n;
+    if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(k))return false;
+    if(this.sel<0)this.sel=0;
+    else{
+      const r=Math.floor(this.sel/N),c=this.sel%N;
+      if(k==='ArrowLeft'&&c>0)this.sel--;
+      if(k==='ArrowRight'&&c<N-1)this.sel++;
+      if(k==='ArrowUp'&&r>0)this.sel-=N;
+      if(k==='ArrowDown'&&r<N-1)this.sel+=N;
+    }
+    this.refresh();return true;
+  }
+  check(){
+    let wrong=0,empty=0,right=0;
+    for(let i=0;i<this.cur.length;i++){
+      if(this.given[i]||this.hinted[i])continue;
+      const s=this.cellState(i);
+      if(s==='empty'){empty++;this.mark[i]=0;}
+      else if(s==='skip')this.mark[i]=0;
+      else if(s==='right'){this.mark[i]=1;right++;}
+      else{this.mark[i]=2;wrong++;}
+    }
+    this.refresh();
+    return {wrong,empty,right};
+  }
+  hint(){
+    const p=this.pickHint();
+    if(!p)return null;
+    this.cur[p.i]=this.sol[p.i];this.hinted[p.i]=true;this.mark[p.i]=0;
+    this.afterSet(p.i,this.sol[p.i]);
+    this.sel=p.i;this.refresh();
+    return p.text;
+  }
+  reset(){
+    for(let i=0;i<this.cur.length;i++)if(!this.given[i]){this.cur[i]=0;this.hinted[i]=false;}
+    this.mark.fill(0);this.sel=-1;this.done=false;
+    this.afterReset();this.refresh();
+  }
+  reveal(){
+    for(let i=0;i<this.cur.length;i++){
+      if(this.given[i])continue;
+      if(this.cur[i]&&this.cur[i]!==this.sol[i])this.mark[i]=2;
+      else if(this.cur[i]===this.sol[i])this.mark[i]=1;
+      else this.revealEmpty(i);
+      this.cur[i]=this.sol[i];
+    }
+    this.afterReset();   // Notizen o. Ä. löschen
+    this.done=true;this.refresh();
+  }
+  finish(){
+    this.done=true;
+    for(let i=0;i<this.cur.length;i++)if(!this.given[i]&&!this.hinted[i])this.mark[i]=1;
+    this.refresh();
+  }
+  applyAutoCheck(on){
+    for(let i=0;i<this.cur.length;i++){
+      if(this.given[i]||this.hinted[i])continue;
+      if(!on&&this.mark[i]===2)this.mark[i]=0;
+      if(on&&this.cur[i]&&this.cur[i]!==this.sol[i])this.mark[i]=2;
+    }
+    this.refresh();
+  }
+  clearSelection(){this.sel=-1;this.refresh();}
+}
+
+
+/* =====================================================================
+   RÄTSEL-MODUL: Turm von Hanoi
+   Zustand = Stab jeder Scheibe (Index 0 = kleinste Scheibe). Eine Breitensuche vom Ziel aus
+   liefert für jeden Zustand die genaue Zahl der noch nötigen Züge (Tipp, Prüfung, Lösung).
+   ===================================================================== */
+/* ===== LOGIK-START ===== */
+function hnTops(s,P){const t=new Array(P).fill(-1);for(let d=s.length-1;d>=0;d--)t[s[d]]=d;return t;}   // oberste (kleinste) Scheibe je Stab
+function hnMoves(s,P){
+  const t=hnTops(s,P),res=[];
+  for(let a=0;a<P;a++){
+    const d=t[a];if(d<0)continue;
+    for(let b=0;b<P;b++){
+      if(a===b)continue;
+      if(t[b]>=0&&t[b]<d)continue;          // nur auf eine grössere Scheibe oder einen leeren Stab
+      const next=s.slice();next[d]=b;
+      res.push({disc:d,from:a,to:b,next});
+    }
+  }
+  return res;
+}
+function hnDist(goal,P){
+  const d=new Map([[goal.join(''),0]]),q=[goal];
+  for(let h=0;h<q.length;h++){
+    const s=q[h],ds=d.get(s.join(''));
+    for(const m of hnMoves(s,P)){const k=m.next.join('');if(!d.has(k)){d.set(k,ds+1);q.push(m.next);}}
+  }
+  return d;
+}
+function hnPlan(s,P,dist){
+  let n=dist.get(s.join(''));if(n===undefined)return null;
+  const path=[];
+  while(n>0){const m=hnMoves(s,P).find(x=>dist.get(x.next.join(''))===n-1);path.push(m);s=m.next;n--;}
+  return path;
+}
+/* Niveaus: sl = klassisch A→C, l = zufälliger Start → C, m = zufälliger Start und Ziel, s = 4 Stäbe */
+function hnCreate(n,lvl){
+  const P=lvl==='s'?4:3,all=(k)=>Array(n).fill(k);
+  const rnd=()=>Array.from({length:n},()=>Math.floor(Math.random()*P));
+  let start,goal;
+  if(lvl==='sl'||lvl==='s'){start=all(0);goal=all(P-1);}
+  else if(lvl==='l'){goal=all(P-1);}
+  else goal=rnd();
+  const dist=hnDist(goal,P);
+  if(lvl==='l'||lvl==='m'){
+    const need=Math.round((2**n-1)*(lvl==='l'?.4:.55));
+    let best=null;
+    for(let t=0;t<400;t++){const c=rnd(),dc=dist.get(c.join(''));if(dc>=need){best=c;break;}if(!best||dc>dist.get(best.join('')))best=c;}
+    start=best;
+  }
+  return {P,n,start,goal,dist,optimum:dist.get(start.join(''))};
+}
+/* ===== LOGIK-ENDE ===== */
+
+const HN_PEG='ABCD';
+class HanoiPuzzle{
+  constructor(def,size,lvl,spec){
+    this.def=def;this.n=size;this.lvlKey=lvl;this.spec=spec;
+    this.state=spec.start;this.stack=[];this.moves=0;this.done=false;this.sel=-1;
+  }
+  mount(ctx,stage,pad){
+    this.ctx=ctx;this.stage=stage;
+    stage.innerHTML='';pad.className='';pad.removeAttribute('style');pad.innerHTML='';
+    const wrap=document.createElement('div');wrap.className='kn-wrap hn';
+    this.info=document.createElement('div');this.info.className='kn-info';wrap.appendChild(this.info);
+    this.svg=document.createElementNS(SVGNS_H,'svg');this.svg.setAttribute('class','kn-svg');
+    this.svg.setAttribute('aria-label','Turm von Hanoi: '+this.spec.P+' Stäbe, '+this.n+' Scheiben');
+    this.svg.addEventListener('click',e=>{const g=e.target.closest('[data-p]');if(g)this.pegClick(+g.dataset.p);});
+    wrap.appendChild(this.svg);
+    const gl=document.createElement('div');gl.className='hn-goal';gl.innerHTML='<span>Ziel:</span>';
+    this.gsvg=document.createElementNS(SVGNS_H,'svg');this.gsvg.setAttribute('class','kn-svg small');
+    gl.appendChild(this.gsvg);wrap.appendChild(gl);
+    stage.appendChild(wrap);
+    pad.className='padhelp';
+    pad.textContent='Stab anklicken (oder Tasten 1–'+this.spec.P+'): erst den Stab, von dem du die oberste Scheibe nimmst, dann den Zielstab. Nie eine grössere auf eine kleinere Scheibe.';
+    this.refresh();
+  }
+  draw(svg,s,sel){
+    const P=this.spec.P,n=this.n,W=130,H=40+(n+1)*22+30,dh=20;
+    svg.setAttribute('viewBox',`0 0 ${P*W} ${H}`);
+    const t=hnTops(s,P);let h='';
+    for(let p=0;p<P;p++){
+      const cx=p*W+W/2,base=H-26;
+      h+=`<g ${svg.classList.contains('small')?'':`data-p="${p}"`} class="peg${sel===p?' sel':''}"><rect x="${p*W+4}" y="4" width="${W-8}" height="${H-8}" rx="10" fill="${sel===p?'#f1f7d9':'#fafcf2'}" stroke="${sel===p?'#8aa51f':'#d3dbbd'}" stroke-width="${sel===p?3:1.5}"/>`;
+      h+=`<rect x="${cx-4}" y="${base-(n+1)*22}" width="8" height="${(n+1)*22}" rx="3" fill="#8b6a34"/><rect x="${cx-52}" y="${base}" width="104" height="8" rx="4" fill="#8b6a34"/>`;
+      h+=`<text x="${cx}" y="${H-6}" text-anchor="middle" font-size="14" font-weight="bold" fill="#5f6b76">${HN_PEG[p]}</text>`;
+      let level=0;
+      for(let d=n-1;d>=0;d--){
+        if(s[d]!==p)continue;
+        const w=30+d*(60/Math.max(1,n-1)),y=base-(level+1)*(dh+2)+2,lift=(sel===p&&t[p]===d);
+        h+=`<rect x="${cx-w/2}" y="${y-(lift?16:0)}" width="${w}" height="${dh}" rx="6" fill="hsl(${70+d*(170/Math.max(1,n))},55%,${52}%)" stroke="${lift?'#231f20':'#4b5563'}" stroke-width="${lift?3:1.5}"/>`;
+        h+=`<text x="${cx}" y="${y+14-(lift?16:0)}" text-anchor="middle" font-size="12" font-weight="bold" fill="#0b1f2a">${d+1}</text>`;
+        level++;
+      }
+      h+='</g>';
+    }
+    svg.innerHTML=h;
+  }
+  refresh(){
+    this.draw(this.svg,this.state,this.sel);this.draw(this.gsvg,this.spec.goal,-1);
+    this.info.innerHTML=`Züge: <b>${this.moves}</b>`;
+  }
+  pegClick(p){
+    if(this.done)return;
+    const s=this.state;
+    if(this.sel<0){
+      if(!s.includes(p)){this.ctx.msg('Auf diesem Stab liegt keine Scheibe.','info');return;}
+      this.sel=p;this.ctx.hideMsg();this.refresh();return;
+    }
+    if(this.sel===p){this.sel=-1;this.refresh();return;}
+    const mv=hnMoves(s,this.spec.P).find(m=>m.from===this.sel&&m.to===p);
+    if(!mv){
+      const t=hnTops(s,this.spec.P);
+      this.ctx.msg(`Das geht nicht: Scheibe ${t[this.sel]+1} darf nicht auf die kleinere Scheibe ${t[p]+1} gelegt werden.`,'warn');
+      this.sel=-1;this.refresh();return;
+    }
+    this.sel=-1;this.step(mv);
+  }
+  step(mv){
+    this.stack.push(this.state);this.moves++;this.state=mv.next;
+    this.ctx.hideMsg();this.refresh();this.ctx.changed();
+  }
+  undo(){
+    if(this.done)return;
+    if(!this.stack.length){this.ctx.msg('Es gibt keinen Zug zum Zurücknehmen.','info');return;}
+    this.state=this.stack.pop();this.moves--;this.sel=-1;this.ctx.hideMsg();this.refresh();
+  }
+  plan(){return hnPlan(this.state,this.spec.P,this.spec.dist);}
+  solved(){return this.state.join('')===this.spec.goal.join('');}
+  customCheck(){
+    const r=this.plan().length;
+    return {text:r===1?'Gut so – nur noch 1 Zug bis zum Ziel.':`Gut so – von hier sind es mindestens noch ${r} Züge bis zum Ziel.`,type:'good'};
+  }
+  hint(){
+    if(this.done)return null;
+    const path=this.plan();if(!path.length)return null;
+    const mv=path[0];this.sel=-1;this.step(mv);
+    return `Tipp: Scheibe ${mv.disc+1} von Stab ${HN_PEG[mv.from]} nach Stab ${HN_PEG[mv.to]} – schon ausgeführt. Noch ${path.length-1} ${path.length-1===1?'Zug':'Züge'} bis zum Ziel.`;
+  }
+  reset(){this.state=this.spec.start;this.stack=[];this.moves=0;this.sel=-1;this.done=false;this.refresh();}
+  reveal(){
+    const path=this.plan();this.done=true;this.sel=-1;let i=0;
+    const run=()=>{if(i>=path.length||!this.stage.isConnected)return;this.state=path[i++].next;this.refresh();setTimeout(run,path.length>40?120:350);};
+    run();
+  }
+  finish(){this.done=true;this.sel=-1;this.refresh();}
+  winInfo(){return `Züge: <b>${this.moves}</b> (kürzeste Lösung: ${this.spec.optimum})`;}
+  keydown(e){
+    const k=e.key.toLowerCase(),i='1234'.indexOf(k)>=0&&k?'1234'.indexOf(k):'abcd'.indexOf(k);
+    if(k.length!==1||i<0||i>=this.spec.P)return false;
+    this.pegClick(i);return true;
+  }
+  applyAutoCheck(){}
+  clearSelection(){this.sel=-1;this.refresh();}
+}
+const SVGNS_H='http://www.w3.org/2000/svg';
+
+const GAME={
+  title:'Turm-von-Hanoi-Trainer',
+  id:'hanoi', name:'Hanoi', icon:'🗼', units:['Zug','Züge'],
+  intro:'Versetze den Turm Scheibe für Scheibe – nie eine grössere auf eine kleinere.',
+  sizes:[3,4,5,6,7,8], size:3, lvl:'sl',
+  sizeTitle:'Anzahl Scheiben', newLabel:'Neues Spiel',
+  sizeLabel:v=>String(v),
+  tag:(s,l)=>`${s} Scheiben · ${LEVEL_NAMES[l]}`,
+  tools:{notes:false,undo:true,auto:false,legend:false},
+  padHelp:'', missing:()=>'',
+  levels:{
+    sl:{desc:n=>`Klassisch: Der Turm steht auf Stab A und soll auf Stab C. Kürzeste Lösung: ${2**n-1} Züge.`},
+    l: {desc:n=>`Die Scheiben liegen zufällig verteilt (auf 3 Stäben), alle sollen als Turm auf Stab C.`},
+    m: {desc:n=>`Zufälliger Start und zufälliges Ziel – auch das Ziel ist eine Verteilung (siehe «Ziel» unter dem Spielfeld).`},
+    s: {desc:n=>`Mit 4 Stäben (A–D): Turm von A nach D. Mehr Platz, aber die beste Zugfolge ist schwer zu finden.`}
+  },
+  create(size,lvl){return new HanoiPuzzle(this,size,lvl,hnCreate(size,lvl));},
+  rules(n){
+    return `
+      <li>Bewege alle Scheiben vom Start zum <b>Ziel</b> (siehe «Ziel» unter dem Spielfeld).</li>
+      <li>Pro Zug wird <b>genau eine Scheibe</b> bewegt – immer die <b>oberste</b> eines Stabs.</li>
+      <li>Nie eine <b>grössere</b> Scheibe auf eine <b>kleinere</b> legen.</li>
+      <li><b>Bedienung:</b> erst den Stab antippen, von dem du eine Scheibe nimmst, dann den Zielstab. Tasten 1–4 oder A–D funktionieren auch, Z nimmt einen Zug zurück.</li>
+      <li><b>Strategie:</b> Mit ${n} Scheiben und 3 Stäben braucht es mindestens 2<sup>${n}</sup> − 1 = ${2**n-1} Züge. Tipp: Wie versetzt man erst einen Turm mit einer Scheibe weniger?</li>
+      <li><b>Hilfen:</b> «Tipp» führt den nächsten besten Zug aus, «Überprüfen» zeigt die Mindestzahl der noch nötigen Züge, «Lösung zeigen» spielt die kürzeste Lösung vor.</li>`;
+  }
+};
+
+/* =====================================================================
+   KERN – Oberfläche (gilt für jedes Rätsel)
+   Erwartet eine globale Konstante GAME (vom Rätsel-Modul definiert).
+   Kümmert sich um: Auswahl Grösse/Niveau, Zeit, Statistik, Prüfen, Tipp,
+   Neu beginnen, Lösung zeigen, Drucken, Gewonnen-Dialog, Tastatur,
+   Einbettung in die Plattform (?embed=1).
+   ===================================================================== */
+const $=id=>document.getElementById(id);
+const def=GAME;
+const EMBED=/[?&]embed=1/.test(location.search)||window.name==='raetsel-embed';
+const STORE_KEY='raetsel-trainer-v1-'+def.id;
+const settings={size:def.size,lvl:def.lvl};
+let solUsed=false,puz=null,noteMode=false,tips=0,checks=0,startT=0,timerId=null,genToken=0;
+
+function loadStore(){
+  try{
+    const o=JSON.parse(localStorage.getItem(STORE_KEY)||'{}');
+    if(def.sizes.includes(o.size))settings.size=o.size;
+    if(def.levels[o.lvl])settings.lvl=o.lvl;
+  }catch(e){}
+}
+function saveStore(){try{localStorage.setItem(STORE_KEY,JSON.stringify(settings));}catch(e){}}
+
+/* Meldungen, Zeit, Statistik */
+function showMsg(t,type){const m=$('msg');m.textContent=t;m.className='msg show '+type;}
+function hideMsg(){$('msg').className='msg';}
+function elapsed(){return Math.floor((Date.now()-startT)/1000);}
+function fmt(s){return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');}
+function startTimer(){stopTimer();startT=Date.now();$('stTime').textContent='00:00';timerId=setInterval(()=>$('stTime').textContent=fmt(elapsed()),1000);}
+function stopTimer(){if(timerId)clearInterval(timerId);timerId=null;}
+/* Deutlich sichtbare Kennzeichnung: Wurde die Lösung angezeigt, bleibt das für dieses Rätsel sichtbar
+   (auch nach «Neu beginnen» und nach dem Lösen) – ein Screenshot kann also nicht als eigene Lösung gelten. */
+function updateStatus(){
+  const st=$('stStatus'),won=puz&&puz.done&&!solUsed&&puz.solved();
+  st.className=solUsed?'bad':won?'good':'';
+  st.textContent=solUsed?'⚠ Lösung angezeigt':won?'✔ selbst gelöst':'in Arbeit';
+  $('solBanner').style.display=solUsed?'block':'none';
+  $('stage').classList.toggle('sol',solUsed);
+}
+function updateStats(){$('stTips').textContent=tips;$('stChecks').textContent=checks;}
+
+const ctx={
+  autoCheck:()=>$('autoCheck').checked,
+  noteMode:()=>noteMode,
+  hideMsg,
+  changed:()=>{if(puz&&!puz.done&&puz.solved())win();},
+  msg:showMsg
+};
+/* Beschriftungen – Rätsel dürfen sie überschreiben (def.sizeLabel, def.tag, def.newLabel …) */
+const sizeLabel=v=>def.sizeLabel?def.sizeLabel(v):`${v} × ${v}`;
+const tagOf=(s,l)=>def.tag?def.tag(s,l):`${LEVEL_NAMES[l]} (${s}×${s})`;
+
+/* Auswahl-Leisten */
+function makeSeg(el,items,current,onPick){
+  el.innerHTML='';
+  for(const it of items){
+    const b=document.createElement('button');
+    b.textContent=it.label;b.dataset.v=it.v;
+    b.classList.toggle('on',String(it.v)===String(current));
+    b.addEventListener('click',()=>onPick(it.v));
+    el.appendChild(b);
+  }
+}
+function buildOptions(){
+  makeSeg($('sizeSeg'),def.sizes.map(n=>({v:n,label:sizeLabel(n)})),settings.size,v=>{settings.size=v;buildOptions();saveStore();updateSetupSel();});
+  makeSeg($('lvlSeg'),Object.keys(def.levels).map(k=>({v:k,label:LEVEL_NAMES[k]})),settings.lvl,v=>{settings.lvl=v;buildOptions();saveStore();updateSetupSel();});
+  const d=def.levels[settings.lvl].desc;
+  $('lvlDesc').textContent=typeof d==='function'?d(settings.size):d;
+  $('sizeSeg').style.display=def.sizes.length>1?'':'none';
+  $('sizeLbl').style.display=def.sizes.length>1?'':'none';
+}
+
+
+/* Schritt 1: Rahmenbedingungen wählen – Schritt 2: Rätsel erstellen */
+const TOOL_IDS=['btnCheck','btnNotes','btnHint','btnReset','btnSolve','btnPrint','btnSubmit'];
+function toolsDisabled(on){for(const id of TOOL_IDS){const e=$(id);if(e)e.disabled=on;}if($('autoCheck'))$('autoCheck').disabled=on;}
+function showSetup(){
+  ++genToken;stopTimer();puz=null;tips=0;checks=0;solUsed=false;
+  const stage=$('stage');stage.classList.remove('loading','sol');
+  stage.innerHTML=`<div class="setup-ph"><div class="big">${def.icon||'🧩'}</div><h3>Neues ${def.name} einrichten</h3><p>Wähle Grösse und Niveau und erstelle dann das Rätsel.</p><p class="chosen" id="setupSel"></p><button class="btn primary" id="btnSetupGo">Rätsel erstellen</button></div>`;
+  $('btnSetupGo').addEventListener('click',startGame);
+  const pad=$('pad');pad.innerHTML='';pad.removeAttribute('style');
+  toolsDisabled(true);hideMsg();
+  $('stLevel').textContent='–';$('stTime').textContent='00:00';$('stStatus').textContent='noch kein Rätsel';$('stStatus').className='';
+  if($('stTips'))$('stTips').textContent='–';
+  if($('solBanner'))$('solBanner').style.display='none';
+  updateSetupSel();
+}
+function updateSetupSel(){const e=$('setupSel');if(e)e.textContent=(def.sizes.length>1?sizeLabel(settings.size)+' · ':'')+LEVEL_NAMES[settings.lvl];}
+function startGame(){
+  if(puz&&!puz.done&&!puz.locked&&!solUsed&&!confirm('Das laufende Rätsel wird verworfen. Wirklich ein neues Rätsel erstellen?'))return;
+  newGame();
+}
+
+/* Neues Rätsel */
+function newGame(){
+  const token=++genToken, stage=$('stage');
+  stopTimer();
+  stage.classList.add('loading');
+  showMsg(`${def.name} wird erstellt …`,'info');
+  setTimeout(()=>{
+    if(token!==genToken)return;
+    let p=null;
+    try{p=def.create(settings.size,settings.lvl);}catch(err){console.error(err);}
+    stage.classList.remove('loading');
+    if(!p){showMsg('Das Rätsel konnte nicht erstellt werden. Bitte nochmals versuchen.','warn');if(!puz)showSetup();return;}
+    puz=p;tips=0;checks=0;solUsed=false;
+    toolsDisabled(false);
+    puz.mount(ctx,stage,$('pad'));
+    if($('autoCheck').checked)puz.applyAutoCheck(true);
+    $('stLevel').textContent=tagOf(settings.size,settings.lvl);
+    $('phTitle').textContent=`${def.name} · ${tagOf(settings.size,settings.lvl)}`;
+    $('rules').innerHTML=def.rules(settings.size);
+    updateStats();updateStatus();startTimer();hideMsg();
+  },30);
+}
+
+/* Werkzeuge */
+function check(){
+  if(!puz||puz.done)return;
+  if(puz.customCheck){checks++;updateStats();const r=puz.customCheck();showMsg(r.text,r.type);return;}
+  checks++;
+  const {wrong,empty,right}=puz.check();
+  updateStats();
+  if(puz.solved()){win();return;}
+  const [one,many]=def.units;
+  if(wrong===0){
+    showMsg(right===0?`Noch nichts eingetragen. ${def.missing(empty)}`
+      :`Super! ${right===1?'Die eingetragene '+one+' ist':'Alle '+right+' eingetragenen '+many+' sind'} richtig. ${def.missing(empty)}`,'good');
+  } else {
+    showMsg(`${wrong} ${wrong===1?one+' ist':many+' sind'} falsch (rot). ${right} richtig. ${def.missing(empty)} Korrigiere die roten Felder.`,'warn');
+  }
+}
+function hint(){
+  if(!puz||puz.done)return;
+  const t=puz.hint();
+  if(t===null)return;
+  tips++;updateStats();showMsg(t,'info');
+  ctx.changed();
+}
+function resetGame(){
+  if(!puz||!confirm('Alle eigenen Eingaben löschen und neu beginnen?'))return;
+  puz.reset();tips=0;checks=0;startTimer();hideMsg();updateStats();
+}
+function showSolution(){
+  if(!puz)return;
+  if(!confirm(`Wirklich die ganze Lösung anzeigen? Das ${def.name}-Rätsel gilt dann als nicht gelöst.`))return;
+  solUsed=true;puz.reveal();stopTimer();updateStatus();
+  showMsg('Lösung angezeigt: grün = du hattest es richtig, rot = war falsch, gelb = war leer.','info');
+}
+function win(){
+  puz.finish();stopTimer();
+  $('winText').innerHTML=`${def.name} · Niveau: <b>${tagOf(settings.size,settings.lvl)}</b><br>Zeit: <b>${fmt(elapsed())}</b><br>${puz.winInfo?puz.winInfo()+'<br>':''}Tipps: <b>${tips}</b> · Prüfungen: <b>${checks}</b>`;
+  if(solUsed){$('winTitle').textContent='⚠ Gelöst – aber mit Lösung';$('winText').innerHTML+='<br><b style="color:var(--bad)">Die Lösung wurde angezeigt – das zählt nicht als selbst gelöst.</b>';}
+  else $('winTitle').textContent='🎉 Geschafft!';
+  updateStatus();
+  $('overlay').classList.add('show');
+  showMsg(solUsed?'Gelöst – aber die Lösung wurde vorher angezeigt.':`Gelöst in ${fmt(elapsed())} mit ${tips} Tipps.`,solUsed?'warn':'good');
+}
+function toggleNotes(){
+  if(def.tools.undo){if(puz)puz.undo();return;}
+  if(!def.tools.notes)return;
+  noteMode=!noteMode;
+  $('btnNotes').textContent=(def.tools.notesLabel||'✎ Notizen')+': '+(noteMode?'ein':'aus');
+  $('btnNotes').classList.toggle('on',noteMode);
+}
+
+/* Ereignisse */
+$('btnNew').addEventListener('click',startGame);
+$('btnCheck').addEventListener('click',check);
+$('btnHint').addEventListener('click',hint);
+$('btnReset').addEventListener('click',resetGame);
+$('btnSolve').addEventListener('click',showSolution);
+$('btnPrint').addEventListener('click',()=>{if(puz){puz.clearSelection();}window.print();});
+$('btnNotes').addEventListener('click',toggleNotes);
+$('btnWinNew').addEventListener('click',()=>{$('overlay').classList.remove('show');showSetup();});
+$('btnWinClose').addEventListener('click',()=>$('overlay').classList.remove('show'));
+$('autoCheck').addEventListener('change',()=>{if(puz)puz.applyAutoCheck($('autoCheck').checked);});
+
+document.addEventListener('keydown',e=>{
+  if($('overlay').classList.contains('show')||!puz)return;
+  if(e.ctrlKey||e.metaKey||e.altKey)return;
+  const t=e.target;
+  if(e.key===' '&&t&&t.closest&&t.closest('button,input,summary,select,textarea'))return;   // Leertaste bedient dann das Bedienelement
+  if((e.key==='n'||e.key==='N')&&def.tools.notes&&!def.tools.undo){toggleNotes();return;}
+  if((e.key==='z'||e.key==='Z'||e.key==='Backspace')&&def.tools.undo&&puz.undo){puz.undo();e.preventDefault();return;}
+  if(puz.keydown(e))e.preventDefault();
+});
+
+/* Einbettung: Höhe an die Plattform melden */
+function setupEmbed(){
+  document.body.classList.add('embed');
+  if(window.parent===window)return;
+  const send=()=>window.parent.postMessage({type:'raetsel-height',id:def.id,h:Math.ceil(document.body.getBoundingClientRect().height)},'*');
+  if(window.ResizeObserver)new ResizeObserver(send).observe(document.body);
+  window.addEventListener('load',send);
+  send();
+}
+
+/* Start */
+(function init(){
+  loadStore();
+  $('gameTitle').textContent=def.title;
+  $('sub').textContent=def.intro;
+  $('newTitle').textContent=def.newLabel||'Neues '+def.name;
+  $('btnNew').textContent=def.newLabel?def.newLabel+' starten':'Neues '+def.name+' erstellen';
+  $('sizeLbl').textContent=def.sizeTitle||'Grösse';
+  if(def.tools.undo)$('btnNotes').textContent='↶ Zug zurück';
+  else if(def.tools.notesLabel)$('btnNotes').textContent=def.tools.notesLabel+': aus';
+  if(def.tools.auto===false)$('autoCheck').parentElement.style.display='none';
+  if(def.tools.legend===false)document.querySelector('.legend').style.display='none';
+  $('rulesTitle').textContent='So geht '+def.name;
+  $('btnNotes').style.display=(def.tools.notes||def.tools.undo)?'':'none';
+  $('btnHint').classList.toggle('full',!(def.tools.notes||def.tools.undo));
+  document.title=def.title+' – Rätsel-Trainer';
+  if(EMBED)setupEmbed();
+  buildOptions();
+  showSetup();
+})();
+
+</script>
+</body>
+</html>
